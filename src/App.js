@@ -1,34 +1,44 @@
 import React from "react";
 
-const List = (props) => {
-    return props.list.map((item) => (
-        <div key={item.objectID}>
-            <span>
-                <a href={item.url}>{item.title}</a>
-            </span>
-            <span>{item.author}</span>
-            <span>{item.num_comments}</span>
-            <span>{item.points}</span>
-        </div>
-    ));
+const List = ({ list }) => {
+    return list.map((item) => <Item key={item.objectID} item={item} />);
 };
 
-const Search = (props) => {
-    const [searchTerm, setSearchTerm] = React.useState("");
+const Item = ({ item }) => (
+    <div>
+        <span>
+            <a href={item.url}>{item.title}</a>
+        </span>
+        <span>{item.author}</span>
+        <span>{item.num_comments}</span>
+        <span>{item.points}</span>
+    </div>
+);
 
+const InputWithLabel = ({ id, children, type = "text", searchTerm, onInputChange }) => {
     const handleChange = (event) => {
-        setSearchTerm(event.target.value);
+        onInputChange(event);
     };
 
     return (
         <div>
-            <label htmlFor="search">Search: </label>
-            <input id="search" type="text" onChange={handleChange} />
+            <label htmlFor={id}>{children}</label>
+            <input id={id} type={type} value={searchTerm} onChange={handleChange} />
             <p>
                 Searching for <strong>{searchTerm}</strong>
             </p>
         </div>
     );
+};
+
+const useSemiPersistentState = (key, initialState) => {
+    const [value, setValue] = React.useState(localStorage.getItem(key) || initialState);
+
+    React.useEffect(() => {
+        localStorage.setItem(key, value);
+    }, [value, key]);
+
+    return [value, setValue];
 };
 
 const App = () => {
@@ -51,12 +61,22 @@ const App = () => {
         },
     ];
 
+    const [searchTerm, setSearchTerm] = useSemiPersistentState("lastSearch", "React");
+
+    const searchedStories = stories.filter((story) => story.title.toLowerCase().includes(searchTerm.toLowerCase()));
+
+    const handleChange = (event) => {
+        setSearchTerm(event.target.value);
+    };
+
     return (
         <div className="App">
             <h1>My Hacker Stories</h1>
-            <Search />
+            <InputWithLabel id="search" label="Search: " onInputChange={handleChange} defaultValue={searchTerm}>
+                <strong>Search:</strong>
+            </InputWithLabel>
             <hr />
-            <List list={stories} />
+            <List list={searchedStories} />
         </div>
     );
 };
