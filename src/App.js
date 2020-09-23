@@ -1,38 +1,45 @@
 import React from "react";
+import axios from "axios";
 
-const List = ({ list, onRemoveStory }) => {
-    return list.map((item) => <Item key={item.objectID} item={item} onRemoveStory={onRemoveStory} />);
+import "./App.css";
+
+const List = ({ list, onRemoveItem }) => {
+    return list.map((item) => <Item key={item.objectID} item={item} onRemoveItem={onRemoveItem} />);
 };
 
-const Item = ({ item, onRemoveStory }) => {
-    return (
-        <div>
-            <span>
-                <a href={item.url}>{item.title}</a>
-            </span>
-            <span>{item.author}</span>
-            <span>{item.num_comments}</span>
-            <span>{item.points}</span>
-            <button id="remove-story" onClick={() => onRemoveStory(item)}>
+const Item = ({ item, onRemoveItem }) => (
+    <div className="item">
+        <span style={{ width: "40%" }}>
+            <a href={item.url}>{item.title}</a>
+        </span>
+
+        <span style={{ width: "30%" }}>{item.author}</span>
+        <span style={{ width: "10%" }}>{item.num_comments}</span>
+        <span style={{ width: "10%" }}>{item.points}</span>
+        <span style={{ width: "10%" }}>
+            <button type="button" onClick={() => onRemoveItem(item)} className="button button_small">
                 Dismiss
             </button>
-        </div>
-    );
-};
+        </span>
+    </div>
+);
 
-const InputWithLabel = ({ id, children, type = "text", defaultValue, onInputChange }) => {
-    const handleChange = (event) => {
-        onInputChange(event);
-    };
+const InputWithLabel = ({ id, value, type = "text", onInputChange, isFocused, children }) => {
+    const inputRef = React.useRef();
 
+    React.useEffect(() => {
+        if (isFocused) {
+            inputRef.current.focus();
+        }
+    }, [isFocused]);
     return (
-        <div>
-            <label htmlFor={id}>{children}</label>
-            <input id={id} type={type} value={defaultValue} onChange={handleChange} />
-            <p>
-                Searching for <strong>{defaultValue}</strong>
-            </p>
-        </div>
+        <>
+            <label htmlFor={id} className="label">
+                {children}
+            </label>
+            &nbsp;
+            <input ref={inputRef} id={id} type={type} value={value} onChange={onInputChange} className="input" />
+        </>
     );
 };
 
@@ -63,25 +70,40 @@ const storiesReducer = (state, action) => {
 };
 
 const API_ENDPOINT = "https://hn.algolia.com/api/v1/search?query=";
+
+const SearchForm = ({ searchTerm, onSearchInput, onSearchSubmit }) => (
+    <form onSubmit={onSearchSubmit} className="search-form">
+        <InputWithLabel id="search" value={searchTerm} isFocused onInputChange={onSearchInput}>
+            <strong>Search:</strong>
+        </InputWithLabel>
+
+        <button type="submit" disabled={!searchTerm} className="button button_large">
+            Submit
+        </button>
+    </form>
+);
+
 const App = () => {
     const [searchTerm, setSearchTerm] = useSemiPersistentState("lastSearch", "");
     const [stories, dispatchStories] = React.useReducer(storiesReducer, { data: [], isLoading: false, isError: false });
+    const [url, setUrl] = React.useState(`${API_ENDPOINT}${searchTerm}`);
 
-    React.useEffect(() => {
-        if (!searchTerm) return;
+    const handleFetchStories = React.useCallback(async () => {
         dispatchStories({ type: "STORIES_FETCH_INIT" });
 
-        fetch(`${API_ENDPOINT}${searchTerm}`)
-            .then((response) => response.json())
-            .then((result) => {
-                dispatchStories({ payload: result.hits, type: "STORIES_FETCH_SUCCESS" });
-            })
-            .catch(() => {
-                dispatchStories({ type: "STORIES_FETCH_ERROR" });
-            });
-    }, [searchTerm]);
+        try {
+            const result = await axios.get(url);
+            dispatchStories({ payload: result.data.hits, type: "STORIES_FETCH_SUCCESS" });
+        } catch {
+            dispatchStories({ type: "STORIES_FETCH_ERROR" });
+        }
+    }, [url]);
 
-    const handleChange = (event) => {
+    React.useEffect(() => {
+        handleFetchStories();
+    }, [handleFetchStories]);
+
+    const handleSearchInput = (event) => {
         setSearchTerm(event.target.value);
     };
 
@@ -89,15 +111,18 @@ const App = () => {
         dispatchStories({ payload: item, type: "REMOVE_STORY" });
     };
 
+    const handleSearchSubmit = (event) => {
+        setUrl(`${API_ENDPOINT}${searchTerm}`);
+        event.preventDefault();
+    };
+
     return (
-        <div className="App">
-            <h1>My Hacker Stories</h1>
-            <InputWithLabel id="search" label="Search: " onInputChange={handleChange} defaultValue={searchTerm}>
-                <strong>Search:</strong>
-            </InputWithLabel>
-            <hr />
+        <div className="container">
+            <h1 className="headline-primary">My Hacker Stories</h1>
+            <SearchForm searchTerm={searchTerm} onSearchInput={handleSearchInput} onSearchSubmit={handleSearchSubmit} />
+
             {stories.isError && <p>Something went wrong ...</p>}
-            {stories.isLoading ? <>Loading...</> : <List list={stories.data} onRemoveStory={handleRemoveStory} />}
+            {stories.isLoading ? <>Loading...</> : <List list={stories.data} onRemoveItem={handleRemoveStory} />}
         </div>
     );
 };
