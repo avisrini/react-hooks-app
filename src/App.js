@@ -2,6 +2,7 @@ import React from "react";
 import axios from "axios";
 
 import "./App.css";
+import { ReactComponent as Check } from "./check.svg";
 
 const List = ({ list, onRemoveItem }) => {
     return list.map((item) => <Item key={item.objectID} item={item} onRemoveItem={onRemoveItem} />);
@@ -78,7 +79,7 @@ const SearchForm = ({ searchTerm, onSearchInput, onSearchSubmit }) => (
         </InputWithLabel>
 
         <button type="submit" disabled={!searchTerm} className="button button_large">
-            Submit
+            <Check height="18px" width="18px" />
         </button>
     </form>
 );

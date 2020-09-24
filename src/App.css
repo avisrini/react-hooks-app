@@ -74,3 +74,8 @@
 
     font-size: 24px;
 }
+
+.button:hover > svg > g {
+    fill: #ffffff;
+    stroke: #ffffff;
+}
